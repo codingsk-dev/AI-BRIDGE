@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.development
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    depends_on:
+      - db
+      - redis
+    environment:
+      - NODE_ENV=development
+    # For horizontal scaling in production, you would run multiple instances of this service
+    # and use a load balancer (like nginx or traefik) in front of them
+
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    env_file:
+      - .env.development
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    # For production scalability, consider:
+    # 1. Using managed PostgreSQL service (AWS RDS, Google Cloud SQL, etc.)
+    # 2. Setting up read replicas for read-heavy workloads
+    # 3. Implementing connection pooling with PgBouncer
+    # 4. Regular backups and point-in-time recovery
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    # For production scalability, consider:
+    # 1. Using managed Redis service (AWS ElastiCache, Redis Cloud, etc.)
+    # 2. Setting up Redis Cluster for horizontal scaling
+    # 3. Implementing proper persistence and backup strategies
+    # 4. Using Redis Sentinel for high availability
+
+volumes:
+  postgres_data:
+  redis_data:
