@@ -4,7 +4,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,12 +27,9 @@ class Settings(BaseSettings):
     uploads_dir: Path = Path("./data/uploads")
     cache_dir: Path = Path("./data/cache")
 
-    # Qdrant
-    qdrant_host: str = "127.0.0.1"
-    qdrant_port: int = 6333
-    qdrant_grpc_port: int = 6334
-    qdrant_api_key: str | None = None
-    qdrant_prefer_grpc: bool = False
+    # Qdrant (Cloud). Local-binary Qdrant is no longer supported.
+    qdrant_url: str = ""
+    qdrant_api_key: str = ""
 
     # Embeddings
     embedding_model: str = "BAAI/bge-small-en-v1.5"
@@ -69,9 +66,15 @@ class Settings(BaseSettings):
     chat_score_threshold: float = 0.30
     chat_max_context_chars: int = 6000
 
-    @property
-    def qdrant_url(self) -> str:
-        return f"http://{self.qdrant_host}:{self.qdrant_port}"
+    @model_validator(mode="after")
+    def _require_qdrant(self) -> "Settings":
+        if not self.qdrant_url or "YOUR-CLUSTER" in self.qdrant_url:
+            raise RuntimeError(
+                "QDRANT_URL is missing or still placeholder. "
+                "Set it in ai-service/.env to your Qdrant Cloud cluster URL "
+                "(https://<cluster-id>.<region>.cloud.qdrant.io:6333)."
+            )
+        return self
 
     @property
     def doc_allowed_exts_list(self) -> tuple[str, ...]:

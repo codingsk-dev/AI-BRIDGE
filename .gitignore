@@ -23,15 +23,17 @@ dist/
 web/.next/
 web/out/
 web/node_modules/
+teammate-frontend/.next/
+teammate-frontend/out/
+teammate-frontend/node_modules/
+fixed-backend/node_modules/
+fixed-backend/dist/
 
-# Qdrant runtime data (data/qdrant/bin stays — the binary)
+# Qdrant runtime state (no longer used — Qdrant Cloud now — but keep ignores
+# harmless for the few local artifacts that may still exist on a checkout).
 ai-service/data/qdrant/snapshots/
 ai-service/data/qdrant/storage/
 ai-service/.qdrant-initialized
-
-# Qdrant runtime state: alias DB + per-collection storage + WAL files.
-# Critical: without this rule the running Qdrant writes its storage into
-# ai-service/storage/ which gets committed and ships publicly.
 ai-service/storage/
 
 # Service runtime data (regenerated each session)
@@ -39,13 +41,20 @@ ai-service/data/cache/
 ai-service/data/uploads/
 
 # Embedding model: pulled by scripts/download_models.py on first install.
-# Keeps the repo small; fresh clone takes ~30s to fetch.
 ai-service/data/models/
 
-# Env / secrets — never commit
+# Env / secrets — NEVER commit
 .env
-ai-service/.env
-**/.env.local
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!.env.*.example
+
+# User's credentials scratchpad
+info.txt
+secrets.txt
+*.local
 
 # Logs
 *.out
@@ -62,3 +71,11 @@ Thumbs.db
 # Frontend
 frontend/frontend.out
 frontend/frontend.err
+
+# Node
+**/node_modules/
+**/.next/
+**/.turbo/
+
+# TypeScript build info
+**/*.tsbuildinfo

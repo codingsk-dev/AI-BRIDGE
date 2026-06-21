@@ -104,10 +104,8 @@ def ensure_collections(client: QdrantClient) -> list[str]:
 def main() -> int:
     print(f"Connecting to Qdrant at {settings.qdrant_url} …")
     client = QdrantClient(
-        host=settings.qdrant_host,
-        port=settings.qdrant_port,
+        url=settings.qdrant_url,
         api_key=settings.qdrant_api_key or None,
-        prefer_grpc=settings.qdrant_prefer_grpc,
         timeout=30,
     )
 
@@ -115,7 +113,7 @@ def main() -> int:
         client.get_collections()
     except Exception as exc:  # pragma: no cover - manual script
         print(f"[error] Could not reach Qdrant at {settings.qdrant_url}: {exc}")
-        print("        Start a local Qdrant server first.")
+        print("        Check QDRANT_URL and QDRANT_API_KEY in ai-service/.env.")
         return 1
 
     created = ensure_collections(client)

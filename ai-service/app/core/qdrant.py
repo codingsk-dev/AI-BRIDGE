@@ -30,10 +30,8 @@ ALL_COLLECTIONS = [
 @lru_cache(maxsize=1)
 def get_qdrant() -> QdrantClient:
     client = QdrantClient(
-        host=settings.qdrant_host,
-        port=settings.qdrant_port,
+        url=settings.qdrant_url,
         api_key=settings.qdrant_api_key or None,
-        prefer_grpc=settings.qdrant_prefer_grpc,
         timeout=30,
     )
     log.info("qdrant client initialised", extra={"url": settings.qdrant_url})
