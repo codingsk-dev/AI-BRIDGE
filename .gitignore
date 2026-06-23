@@ -20,14 +20,11 @@ dist/
 *.egg-info/
 
 # Next.js
-web/.next/
-web/out/
-web/node_modules/
-teammate-frontend/.next/
-teammate-frontend/out/
-teammate-frontend/node_modules/
-fixed-backend/node_modules/
-fixed-backend/dist/
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+backend/node_modules/
+backend/dist/
 
 # Qdrant runtime state (no longer used — Qdrant Cloud now — but keep ignores
 # harmless for the few local artifacts that may still exist on a checkout).
