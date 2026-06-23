@@ -53,7 +53,7 @@ async def live_research(
         top_k=body.top_k,
         embedding_model=request.app.state.embedding_model,
         qdrant=request.app.state.qdrant,
-        groq=request.app.state.groq,
+        groq=request.app.state.groq.get("research") or request.app.state.groq.get("general"),
     )
     try:
         result = LiveResearchService(ctx).run()

@@ -24,12 +24,13 @@ async def speech_to_text(
     language: str = Form("en"),
 ):
     """Transcribe audio using Groq Whisper API."""
-    if not request.app.state.groq:
+    groq_pool = request.app.state.groq.get("voice") or request.app.state.groq.get("general")
+    if not groq_pool:
         return JSONResponse(status_code=503, content={"error": {"code": "llm_offline", "message": "Groq not configured"}})
     
     file_bytes = await file.read()
     try:
-        text = request.app.state.groq.transcribe_audio(
+        text = groq_pool.transcribe_audio(
             file_name=file.filename or "audio.webm",
             file_bytes=file_bytes,
             language=language,
@@ -48,7 +49,7 @@ def _build_ctx(body: ChatRequest, request: Request) -> ChatContext:
         score_threshold=body.score_threshold,
         embedding_model=request.app.state.embedding_model,
         qdrant=request.app.state.qdrant,
-        groq=request.app.state.groq,
+        groq=request.app.state.groq.get(body.source) or request.app.state.groq.get("general"),
         include_live_web=body.include_live_web,
         company_name=body.company_name,
         company_url=body.company_url,

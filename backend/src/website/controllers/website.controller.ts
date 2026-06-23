@@ -6,23 +6,25 @@ import { websiteService } from '../services/website.service';
 async function resolveBusiness(req: Request): Promise<string | { error: string; status: number }> {
   const userId = req.user?.id;
   if (!userId) return { error: 'Unauthorized', status: 401 };
-  let business = await businessRepository.findByUserId(userId);
-  // Onboarding safety net: if the user has no business yet, auto-create
-  // a placeholder from the URL they just submitted so the rest of the
-  // onboarding flow has something to attach to. The frontend also
-  // tries to do this on `/dashboard/onboarding` mount, but a network
-  // blip can swallow that — handle it here too.
-  if (!business) {
-    const url = typeof req.body?.url === 'string' ? req.body.url : null;
-    const derivedName = url ? safeDomainLabel(url) : 'My Business';
-    business = await businessRepository.createBusiness({
-      userId,
-      name: derivedName,
-      industry: 'OTHER',
-      websiteUrl: url ?? undefined,
-    });
+
+  const businessId = req.body?.businessId || req.query?.businessId;
+  if (businessId) {
+    const business = await businessRepository.findById(businessId as string);
+    if (business && business.userId === userId) {
+      return business.id;
+    }
   }
-  return business.id;
+
+  // If no businessId provided, or the business was not found, create a new one.
+  const url = typeof req.body?.url === 'string' ? req.body.url : null;
+  const derivedName = url ? safeDomainLabel(url) : 'My Business';
+  const newBusiness = await businessRepository.createBusiness({
+    userId,
+    name: derivedName,
+    industry: 'OTHER',
+    websiteUrl: url ?? undefined,
+  });
+  return newBusiness.id;
 }
 
 function safeDomainLabel(url: string): string {
@@ -62,7 +64,8 @@ export class WebsiteController {
         }
         await businessRepository.updateBusiness(resolved, updateData);
       }
-      return res.status(200).json({ message: 'Website URL set successfully', website });
+      const updatedBusiness = await businessRepository.findById(resolved);
+      return res.status(200).json({ message: 'Website URL set successfully', website, business: updatedBusiness });
     } catch (error) {
       return next(error);
     }

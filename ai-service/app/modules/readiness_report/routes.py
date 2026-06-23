@@ -53,7 +53,7 @@ async def generate_report(
         language=body.language,
         embedding_model=request.app.state.embedding_model,
         qdrant=request.app.state.qdrant,
-        groq=request.app.state.groq,
+        groq=request.app.state.groq.get("report") or request.app.state.groq.get("general"),
     )
     try:
         result = ReadinessReportService(ctx).run()

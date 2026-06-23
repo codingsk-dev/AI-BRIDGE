@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); prisma.message.findMany({where: {chatSessionId: '733b8842-a597-4abb-806e-af4430655dfa'}}).then(console.log).finally(() => prisma.\$disconnect());

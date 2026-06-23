@@ -61,6 +61,7 @@ function NewChatbotForm() {
       const data = await api<{ widget: Widget }>('/api/widget', {
         method: 'POST',
         body: {
+          businessId,
           title: name,
           description: description || undefined,
           theme: 'AUTO',

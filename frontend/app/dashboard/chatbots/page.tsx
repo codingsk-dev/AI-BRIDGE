@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Plus, Loader2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import type { Widget } from '@/lib/types'
@@ -11,6 +12,7 @@ export default function ChatbotsPage() {
   const [widgets, setWidgets] = useState<Widget[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -90,29 +92,48 @@ export default function ChatbotsPage() {
               </Link>
             </div>
           ) : (
-            <ul className="divide-y divide-border">
-              {widgets.map((w) => (
-                <li key={w.id} className="p-5 flex items-center justify-between">
-                  <div>
-                    <Link
-                      href={`/dashboard/chatbots/${w.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {w.title}
-                    </Link>
-                    <p className="text-xs text-muted-foreground">
-                      Public URL: <span className="font-mono">/{w.slug}</span> · {w.theme} ·{' '}
-                      {w.position} · {w.isEnabled ? 'active' : 'disabled'}
-                    </p>
-                  </div>
-                  <Link href={`/dashboard/chatbots/${w.id}`}>
-                    <Button variant="outline" size="sm">
-                      Open
-                    </Button>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="p-4 border-b border-border">
+                <Input
+                  type="text"
+                  placeholder="Search chatbots..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="max-w-md"
+                />
+              </div>
+              {widgets.filter((w) => w.title.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  No chatbots match your search.
+                </div>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {widgets
+                    .filter((w) => w.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .map((w) => (
+                      <li key={w.id} className="p-5 flex items-center justify-between">
+                        <div>
+                          <Link
+                            href={`/dashboard/chatbots/${w.id}`}
+                            className="font-medium hover:underline"
+                          >
+                            {w.title}
+                          </Link>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Public URL: <span className="font-mono">/{w.slug}</span> · {w.theme} ·{' '}
+                            {w.position} · {w.isEnabled ? 'active' : 'disabled'}
+                          </p>
+                        </div>
+                        <Link href={`/dashboard/chatbots/${w.id}`}>
+                          <Button variant="outline" size="sm">
+                            Open
+                          </Button>
+                        </Link>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </>
           )}
         </div>
       </div>

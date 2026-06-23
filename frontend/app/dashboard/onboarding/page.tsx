@@ -9,7 +9,7 @@
 // State is local to this page; nothing is persisted across reloads. When
 // the user finishes Step 4 we send them to /dashboard.
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowRight,
   CheckCircle2,
@@ -182,7 +182,7 @@ function CrawlingSimulation({ url, isComplete }: { url: string; isComplete: bool
           </div>
           <span className="text-slate-500 text-[10px]">crawler.sh</span>
         </div>
-        <div className="flex flex-col gap-1.5 overflow-y-auto flex-1 pb-4">
+        <div className="flex flex-col gap-1.5 overflow-y-auto flex-1 pb-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
           {logs.map((log, i) => log && (
             <div key={i} className="text-emerald-400/90 leading-relaxed">
               <span className="text-slate-500 mr-2">{'>'}</span>
@@ -231,36 +231,29 @@ export default function OnboardingPage() {
   const [chatInput, setChatInput] = useState('')
   const [chatLog, setChatLog] = useState<Array<{ role: 'user' | 'ai'; text: string }>>([])
   const [chatSending, setChatSending] = useState(false)
+  const [sessionId, setSessionId] = useState<string | null>(null)
 
-  // Load the user's business (auto-create one if they have none).
+  const searchParams = useSearchParams()
+  const urlBusinessId = searchParams.get('businessId')
+
+  // Load the specific business if requested (auto-create one later if none).
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
+        if (!urlBusinessId) {
+          if (!cancelled) setLoadingBiz(false)
+          return
+        }
         const data = await api<{ businesses: Business[] }>('/api/business/mine')
         if (cancelled) return
-        if (data.businesses && data.businesses.length > 0) {
-          setBusiness(data.businesses[0])
+        
+        const target = data.businesses?.find(b => b.id === urlBusinessId)
+        if (target) {
+          setBusiness(target)
         }
       } catch (err) {
-        if (!cancelled) {
-          // No business yet — auto-create one so the user has a workspace.
-          try {
-            // Real users almost never type "My Business" — derive a
-            // better default from the email's domain or fall back to
-            // "My Business" only as a last resort. A real name keeps
-            // the AI advisor from inventing generic answers about a
-            // fictional "Company X".
-            const derivedName = deriveBusinessNameFromEmail()
-            const created = await api<{ business: Business }>('/api/business', {
-              method: 'POST',
-              body: { name: derivedName, industry: 'OTHER' },
-            })
-            if (!cancelled) setBusiness(created.business)
-          } catch {
-            // ignore — user can create manually later
-          }
-        }
+        // ignore — user can create manually later
       } finally {
         if (!cancelled) setLoadingBiz(false)
       }
@@ -279,39 +272,21 @@ export default function OnboardingPage() {
     }
     setSubmittingUrl(true)
     try {
-      // 1) Make sure a business exists. The backend's
-      //    /api/website/url auto-creates one if the user is brand new,
-      //    but we also try to fetch the user's existing business here
-      //    so the local `business` state is set correctly (the rest of
-      //    the flow needs it for document upload + chat session).
-      let biz = business
-      if (!biz) {
-        try {
-          const data = await api<{ business: Business }>(
-            '/api/business/mine',
-          )
-          biz = data.business
-          if (biz) setBusiness(biz)
-        } catch {
-          // ignore — the URL endpoint will create one if needed
-        }
-      }
-
       // 2) Attach URL to business. The backend's
-      //    `resolveBusiness` helper auto-creates a placeholder business
-      //    from the URL domain if none exists yet.
-      const urlRes = await api<{ website: Website }>('/api/website/url', {
+      //    `resolveBusiness` helper auto-creates a new business
+      //    if no businessId is provided!
+      const urlRes = await api<{ website: Website; business?: Business }>('/api/website/url', {
         method: 'POST',
-        body: { url: url.trim() },
+        body: { 
+          businessId: business?.id,
+          url: url.trim() 
+        },
       })
       setWebsite(urlRes.website)
       
-      // Refresh business state so the UI name syncs with any backend auto-renames
-      try {
-        const bizRes = await api<{ business: Business }>('/api/business/mine')
-        if (bizRes.business) setBusiness(bizRes.business)
-      } catch {
-        // ignore
+      // Update business state with the returned business (in case it was just created or renamed)
+      if (urlRes.business) {
+        setBusiness(urlRes.business)
       }
       // 3) Trigger crawl (analyze-website under the hood). Skip the
       //    setCrawl('pending') flip if the backend already marked
@@ -321,7 +296,10 @@ export default function OnboardingPage() {
         setCrawl({ status: 'pending' })
         const crawlRes = await api<{ pagesCrawled: number }>(
           '/api/website/crawl',
-          { method: 'POST' },
+          { 
+            method: 'POST',
+            body: { businessId: urlRes.business?.id || business?.id }
+          },
         )
         setCrawl({
           status: 'success',
@@ -413,18 +391,23 @@ export default function OnboardingPage() {
       { role: 'ai', text: 'Researching your site…' },
     ])
     try {
-      // 1) Open an ephemeral chat session against the business.
-      //    We do NOT pass a widgetId so it remains a temporary sandbox session.
-      const sessionRes = await api<{ chatSession: { id: string } }>(
-        '/api/chat/session',
-        {
-          method: 'POST',
-          body: {
-            businessId: business.id,
+      let sid = sessionId
+      if (!sid) {
+        // 1) Open an ephemeral chat session against the business.
+        //    We do NOT pass a widgetId so it remains a temporary sandbox session.
+        const sessionRes = await api<{ chatSession: { id: string } }>(
+          '/api/chat/session',
+          {
+            method: 'POST',
+            body: {
+              businessId: business.id,
+            },
           },
-        },
-      )
-      const sid = sessionRes.chatSession.id
+        )
+        sid = sessionRes.chatSession.id
+        setSessionId(sid)
+      }
+
       // 2) Send the message. The gateway persists the row and fires
       //    the AI proxy in a background worker, so this returns in a
       //    few hundred ms instead of the previous 20-35s. The bot's

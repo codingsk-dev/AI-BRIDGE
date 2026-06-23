@@ -304,12 +304,12 @@ class GroqKeyPool:
         )
 
 
-@lru_cache(maxsize=1)
-def get_groq() -> GroqKeyPool | None:
-    """Return a singleton GroqKeyPool, or None if no keys are configured."""
-    keys = settings.groq_api_key_list
+@lru_cache(maxsize=None)
+def get_groq(feature: str = "general") -> GroqKeyPool | None:
+    """Return a singleton GroqKeyPool for a specific feature, or None if no keys are configured."""
+    keys = settings.get_groq_api_key_list(feature)
     if not keys:
-        log.warning("no Groq API keys configured — LLM endpoints will return 503")
+        log.warning("no Groq API keys configured for %s — LLM endpoints will return 503", feature)
         return None
     clients = [
         GroqClient(

@@ -115,7 +115,7 @@ export default function SettingsPage() {
                     <Input
                       id="timezone"
                       className="mt-2"
-                      value={settings.timezone}
+                      value={settings.timezone ?? ''}
                       onChange={(e) =>
                         setSettings({ ...settings, timezone: e.target.value })
                       }
@@ -126,7 +126,7 @@ export default function SettingsPage() {
                     <Input
                       id="language"
                       className="mt-2"
-                      value={settings.language}
+                      value={settings.language ?? ''}
                       onChange={(e) =>
                         setSettings({ ...settings, language: e.target.value })
                       }
@@ -139,7 +139,7 @@ export default function SettingsPage() {
                       type="number"
                       min={1}
                       className="mt-2"
-                      value={settings.dataRetentionDays}
+                      value={settings.dataRetentionDays ?? ''}
                       onChange={(e) =>
                         setSettings({
                           ...settings,

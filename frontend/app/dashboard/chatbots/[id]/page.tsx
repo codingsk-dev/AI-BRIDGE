@@ -138,8 +138,20 @@ export default function ChatbotDetailPage({ params }: ChatbotDetailPageProps) {
     setTimeout(() => setIsCopied(false), 2000)
   }
 
+  const handleDeleteWidget = async () => {
+    if (!confirm('Are you sure you want to delete this widget? This action cannot be undone.')) {
+      return
+    }
+    try {
+      await api(`/api/widget/${widgetId}`, { method: 'DELETE' })
+      router.push('/dashboard/chatbots')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete widget')
+    }
+  }
+
   return (
-    <div className="p-8 h-screen overflow-hidden flex flex-col">
+    <div className="h-[calc(100vh-140px)] flex flex-col">
       <div className="max-w-4xl w-full mx-auto flex flex-col h-full">
         <Link href="/dashboard/chatbots">
           <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors">
@@ -187,8 +199,8 @@ export default function ChatbotDetailPage({ params }: ChatbotDetailPageProps) {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-4 gap-6 flex-1 overflow-hidden">
-          <div className="lg:col-span-3 flex flex-col bg-card rounded-lg border border-border overflow-hidden">
+        <div className="grid lg:grid-cols-4 gap-6 flex-1 min-h-0">
+          <div className="lg:col-span-3 flex flex-col bg-card rounded-lg border border-border overflow-hidden min-h-0">
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.length === 0 && (
                 <p className="text-muted-foreground text-sm text-center py-12">
@@ -248,7 +260,7 @@ export default function ChatbotDetailPage({ params }: ChatbotDetailPageProps) {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto min-h-0 pb-4 pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
             <div className="bg-card rounded-lg border border-border p-4">
               <h3 className="font-semibold mb-3">Widget info</h3>
               <div className="space-y-3 text-sm">
@@ -286,6 +298,7 @@ export default function ChatbotDetailPage({ params }: ChatbotDetailPageProps) {
               <div className="space-y-2">
                 <Button
                   variant="outline"
+                  onClick={handleDeleteWidget}
                   className="w-full border-destructive/30 hover:bg-destructive/10 justify-start text-xs text-destructive"
                 >
                   <Trash2 className="w-3 h-3 mr-2" />

@@ -76,6 +76,9 @@ class ChatRequest(BaseModel):
     chat_mode: Literal["text", "voice"] = Field(
         "text", description="Hint to the LLM to generate a shorter response if 'voice'."
     )
+    source: Literal["widget", "onboarding"] | None = Field(
+        None, description="Tells ai-service which Groq key to use."
+    )
 
 
 class ErrorDetail(BaseModel):

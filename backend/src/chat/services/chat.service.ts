@@ -225,6 +225,7 @@ export class ChatService {
           company_url: companyUrl,
           recent_messages: recentMessages,
           chat_mode: chatMode,
+          source: session.widgetId ? 'widget' : 'onboarding',
         },
         { headers, timeout: 30_000 },
       );
@@ -240,7 +241,18 @@ export class ChatService {
         await chatRepository.updateMessageCount(chatSessionId, newCount);
       }
     } catch (err) {
-      logger.error('Failed to communicate with AI Service', err);
+      logger.error({ err }, 'Failed to communicate with AI Service');
+      try {
+        await chatRepository.createMessage({
+          chatSessionId,
+          content: 'Sorry, the AI service encountered an error and could not generate a response.',
+          isFromUser: false,
+        });
+        const newCount = await chatRepository.getMessageCountByChatSessionId(chatSessionId);
+        await chatRepository.updateMessageCount(chatSessionId, newCount);
+      } catch (dbErr) {
+        logger.error({ dbErr }, 'Failed to save error message');
+      }
     }
   }
 

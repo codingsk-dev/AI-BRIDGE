@@ -14,7 +14,7 @@ import {
   Rocket,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import type { Business, Audit } from '@/lib/types'
+import type { Business, Audit, Widget } from '@/lib/types'
 
 interface BusinessWithExtras {
   business: Business
@@ -25,6 +25,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [latest, setLatest] = useState<Record<string, Audit | null>>({})
+  const [widgets, setWidgets] = useState<Widget[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -32,11 +33,16 @@ export default function DashboardPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const data = await api<{ business?: Business; businesses?: Business[] }>('/api/businesses')
+        const [data, widgetData] = await Promise.all([
+          api<{ business?: Business; businesses?: Business[] }>('/api/businesses'),
+          api<{ widgets: Widget[] }>('/api/widget').catch(() => ({ widgets: [] }))
+        ])
+        
         if (cancelled) return
         
         const loadedBusinesses = data.businesses ?? (data.business ? [data.business] : [])
         setBusinesses(loadedBusinesses)
+        setWidgets(widgetData.widgets ?? [])
         
         const audits: Record<string, Audit | null> = {}
         await Promise.all(
@@ -111,7 +117,7 @@ export default function DashboardPage() {
           />
           <KpiCard
             label="Widgets"
-            value="—"
+            value={loading ? '—' : String(widgets.length)}
             hint="Open a business to manage its chat widget"
             icon={<MessageSquare className="w-5 h-5" />}
           />
@@ -135,13 +141,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
               </div>
-              <Link
-                href={
-                  businesses[0]
-                    ? `/dashboard/onboarding?businessId=${businesses[0].id}`
-                    : '/dashboard/onboarding'
-                }
-              >
+              <Link href="/dashboard/onboarding">
                 <Button className="bg-indigo-600 hover:bg-indigo-700 text-white h-11 px-5">
                   Start setup
                   <ArrowRight className="w-4 h-4 ml-2" />

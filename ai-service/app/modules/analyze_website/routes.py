@@ -52,7 +52,7 @@ async def analyze_website(body: AnalyzeWebsiteRequest, request: Request) -> Webs
             crawler=crawler,
             embedding_model=request.app.state.embedding_model,
             qdrant=request.app.state.qdrant,
-            groq=request.app.state.groq,
+            groq=request.app.state.groq.get("description") or request.app.state.groq.get("general"),
         )
         try:
             result = WebsiteAnalysisService(ctx).run()
@@ -89,7 +89,8 @@ async def generate_description(
 ) -> JSONResponse:
     from app.api.schemas import GenerateDescriptionRequest, GenerateDescriptionResponse
     req_body = GenerateDescriptionRequest(**body)
-    if not request.app.state.groq:
+    groq_pool = request.app.state.groq.get("description") or request.app.state.groq.get("general")
+    if not groq_pool:
         return JSONResponse(status_code=503, content={"error": {"code": "llm_unavailable", "message": "Groq LLM is not configured"}})
 
     text = ""
@@ -112,7 +113,8 @@ async def generate_description(
         prompt += "Base it purely on the company name."
 
     try:
-        desc = request.app.state.groq.complete_chat(system, prompt)
+        from app.core.groq_client import GroqUnavailable
+        desc = groq_pool.complete_chat(system, prompt)
         return JSONResponse(status_code=200, content={"description": desc})
     except Exception as exc:
         return JSONResponse(status_code=502, content={"error": {"code": "groq_failed", "message": str(exc)}})

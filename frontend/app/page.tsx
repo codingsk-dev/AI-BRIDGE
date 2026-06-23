@@ -482,11 +482,7 @@ function WorkSection() {
 
         <div className="grid md:grid-cols-3 gap-6 mb-10">
           <ActionCard
-            href={
-              businesses[0]
-                ? `/dashboard/onboarding?businessId=${businesses[0].id}`
-                : '/dashboard/onboarding'
-            }
+            href="/dashboard/onboarding"
             title="Set up your chatbot"
             body="Drop a URL, add documents, train, chat. Four quick steps."
             cta={businesses[0] ? 'Continue setup' : 'Start setup'}

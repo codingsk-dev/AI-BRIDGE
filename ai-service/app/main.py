@@ -53,7 +53,15 @@ async def lifespan(app: FastAPI):
     # rather than on the first request.
     app.state.embedding_model = get_embedding_model()
     app.state.qdrant = get_qdrant()
-    app.state.groq = get_groq()
+    app.state.groq = {
+        "description": get_groq("description"),
+        "widget": get_groq("widget"),
+        "onboarding": get_groq("onboarding"),
+        "voice": get_groq("voice"),
+        "report": get_groq("report"),
+        "research": get_groq("research"),
+        "general": get_groq("general"),
+    }
     # Create the live_research collection on the cloud Qdrant cluster.
     # Idempotent — runs at most once per process; the 409 from a
     # pre-existing collection is silently swallowed.

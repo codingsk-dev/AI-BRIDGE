@@ -47,10 +47,16 @@ class Settings(BaseSettings):
     doc_max_files_per_request: int = 10
     doc_allowed_exts: str = ".pdf,.docx,.txt"
 
-    # Groq. GROQ_API_KEYS is a comma-separated list for failover; GROQ_API_KEY
-    # is the legacy single-key entry point and gets folded into the list.
+    # Groq API Keys by feature
+    groq_api_key_description: str = ""
+    groq_api_key_widget: str = ""
+    groq_api_key_onboarding: str = ""
+    groq_api_key_voice: str = ""
+    groq_api_key_report: str = ""
+    groq_api_key_research: str = ""
     groq_api_key: str = ""
     groq_api_keys: str = ""
+    
     groq_model: str = "llama-3.1-70b-versatile"
     groq_temperature: float = 0.1
     groq_max_tokens: int = 1024
@@ -116,13 +122,17 @@ class Settings(BaseSettings):
             ext.strip().lower() for ext in self.doc_allowed_exts.split(",") if ext.strip()
         )
 
-    @property
-    def groq_api_key_list(self) -> list[str]:
+    def get_groq_api_key_list(self, feature: str = "general") -> list[str]:
         keys: list[str] = []
-        if self.groq_api_keys:
-            keys.extend(k.strip() for k in self.groq_api_keys.split(","))
-        if self.groq_api_key:
-            keys.append(self.groq_api_key.strip())
+        feature_key = getattr(self, f"groq_api_key_{feature}", None)
+        if feature_key:
+            keys.extend(k.strip() for k in feature_key.split(",") if k.strip() and k.strip() != "replace-me")
+            
+        if not keys:
+            if self.groq_api_keys:
+                keys.extend(k.strip() for k in self.groq_api_keys.split(","))
+            if self.groq_api_key:
+                keys.append(self.groq_api_key.strip())
         return [k for k in keys if k and k != "replace-me"]
 
 
