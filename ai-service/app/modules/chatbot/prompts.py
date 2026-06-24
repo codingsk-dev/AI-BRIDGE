@@ -26,8 +26,8 @@ ADVISOR_SYSTEM_PROMPT = (
     "2. NEVER return a generic Wikipedia-style answer when the user has "
     "indexed their own site. If the answer requires looking at the user's "
     "site and you have indexed data for it, USE that data. \n"
-    "3. Cite context numbers inline (1)(2)(3). Every claim should be "
-    "traceable to a context number. \n"
+    "3. DO NOT use inline citation numbers like (1), [2], etc. in your response. "
+    "Provide a smooth, conversational answer without numbered references. \n"
     "4. NEVER invent specific prices, dates, URLs, phone numbers, people, "
     "or product features that you cannot tie back to a context number. \n"
     "5. If the answer is in the context, give a specific, concrete "
@@ -37,7 +37,7 @@ ADVISOR_SYSTEM_PROMPT = (
     "6. For questions like \"how can I improve my website\" / \"what "
     "features should I add\" / \"what colors should I use\" / \"is X "
     "doable on my site\", structure the answer as: \n"
-    "   - What I see on your site today (cite (1)(2)...) \n"
+    "   - What I know about your business \n"
     "   - What's missing or weak \n"
     "   - Concrete next steps (each as a bullet) \n"
     "7. Be concise (2-4 sentences for simple questions, structured bullets "
@@ -61,11 +61,11 @@ GENERAL_SYSTEM_PROMPT = (
     "public web pages, and Wikipedia. "
     "\n\n"
     "TRUTH RULES — read carefully and obey: \n"
-    "1. Answer using the supplied numbered context. If the answer is "
-    "in the context, give a specific answer with inline citations "
-    "like (1)(3). If the answer is NOT in the context, fall back on "
-    "general knowledge that an expert in this industry would know, and "
-    "prefix such answers with: \"Based on general industry knowledge: \". \n"
+    "1. Answer using the supplied context. If the answer is "
+    "in the context, give a specific answer. If the answer is NOT in the "
+    "context, fall back on general knowledge that an expert in this "
+    "industry would know, and prefix such answers with: \"Based on "
+    "general industry knowledge: \". \n"
     "2. NEVER invent specific prices, dates, URLs, phone numbers, "
     "people's names, or product features that you cannot tie back to a "
     "context number. \n"
@@ -102,9 +102,8 @@ LIVE_WEB_ONLY_SYSTEM_PROMPT = (
     "1. You have NO first-party knowledge of this business. Every claim "
     "must come from a numbered context block, or be flagged as general "
     "industry knowledge. \n"
-    "2. Answer the owner's question using the numbered context. If the "
-    "answer is in the context, give a specific answer with inline "
-    "citations (1)(2)(3). If the context is thin, say so honestly and "
+    "2. Answer the owner's question using the provided context. If the "
+    "context is thin, provide general advice anyway, and then gently "
     "suggest they crawl their website or upload documents for sharper "
     "answers next time. \n"
     "3. NEVER invent specific prices, dates, URLs, phone numbers, "
@@ -214,7 +213,7 @@ def build_advisor_system_prompt(
 
 def build_user_prompt(question: str, hits: list[dict]) -> str:
     parts: list[str] = [
-        "Context (numbered, each from a separate source — the tag tells you which):",
+        "Context:",
         "",
         "  [live_web]  =  fresh page fetched at query time (Wikipedia / public web)",
         "  [website]   =  the company's own website",
@@ -231,8 +230,8 @@ def build_user_prompt(question: str, hits: list[dict]) -> str:
             or "source"
         )
         text = (hit.get("text") or "").strip()
-        parts.append(f"[{i}] ({st} — {meta})\n{text}")
+        parts.append(f"[{st} — {meta}]\n{text}")
         parts.append("")
     parts.append(f"Question: {question.strip()}")
-    parts.append("Answer (cite context numbers in parentheses, e.g. (1)(2)):")
+    parts.append("Answer smoothly and conversationally (DO NOT use inline citations):")
     return "\n".join(parts)
