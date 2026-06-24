@@ -201,13 +201,15 @@ export class ChatController {
       const response = await axios.post(aiServiceUrl, formData, {
         headers: {
           ...formData.getHeaders(),
+          'Content-Length': formData.getLengthSync()
         },
       });
 
       return res.status(200).json(response.data);
     } catch (error: any) {
-      logger.error('Voice transcription failed', error.message || error);
-      return res.status(500).json({ error: 'Failed to transcribe voice' });
+      const details = error.response?.data || error.message || error;
+      logger.error('Voice transcription failed', details);
+      return res.status(500).json({ error: `STT Error: ${JSON.stringify(details)}` });
     }
   }
 
@@ -228,8 +230,9 @@ export class ChatController {
       res.setHeader('Content-Type', 'audio/mpeg');
       response.data.pipe(res);
     } catch (error: any) {
-      logger.error('TTS failed', error.message || error);
-      return res.status(500).json({ error: 'Failed to generate speech' });
+      const details = error.response?.data || error.message || error;
+      logger.error('TTS failed', details);
+      return res.status(500).json({ error: `TTS Error: ${JSON.stringify(details)}` });
     }
   }
 }
