@@ -45,7 +45,7 @@ async def speech_to_text(
 
 class TTSRequest(BaseModel):
     text: str
-    voice: str = "en-US-JennyNeural"
+    voice: str = "en-IN-NeerjaNeural"
 
 
 @router.post("/text-to-speech")
