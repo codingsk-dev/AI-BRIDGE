@@ -458,8 +458,7 @@ export default function OnboardingPage() {
         
         try {
           // Use standard fetch because api() wrapper expects JSON
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-          const res = await fetch(`${baseUrl}/api/chat/tts`, {
+          const res = await fetch(`/api/chat/tts`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: cleanText })
