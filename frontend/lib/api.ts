@@ -182,12 +182,20 @@ export async function api<T = unknown>(
   const text = await res.text();
   const data: unknown = text ? safeParse(text) : null;
   if (!res.ok) {
-    const errBody = (data as { error?: string; details?: unknown } | null) ?? null;
-    throw new ApiError(
-      res.status,
-      errBody?.error ?? `Request failed with status ${res.status}`,
-      errBody?.details,
-    );
+    const errBody = (data as { error?: string | Record<string, any>; message?: string; details?: unknown } | null) ?? null;
+    
+    let errMsg = `Request failed with status ${res.status}`;
+    if (errBody) {
+      if (typeof errBody.error === 'string') {
+        errMsg = errBody.error;
+      } else if (errBody.error && typeof errBody.error === 'object' && errBody.error.message) {
+        errMsg = String(errBody.error.message);
+      } else if (typeof errBody.message === 'string') {
+        errMsg = errBody.message;
+      }
+    }
+
+    throw new ApiError(res.status, errMsg, errBody?.details);
   }
   return data as T;
 }

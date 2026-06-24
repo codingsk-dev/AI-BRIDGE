@@ -310,8 +310,8 @@ export default function OnboardingPage() {
       }
       // Auto-advance after a pause so the user sees the crawler simulation finish
       setTimeout(() => setStep(2), 3500)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Could not crawl that URL'
+    } catch (err: any) {
+      const msg = err instanceof Error ? String(err.message) : String(err || 'Could not crawl that URL')
       setCrawl({ status: 'failed', error: msg })
       setUrlError(msg)
     } finally {
