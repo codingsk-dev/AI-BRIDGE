@@ -10,6 +10,7 @@ import { chatService } from '../services/chat.service';
 import { businessRepository } from '../../business/repositories/business.repository';
 import { prisma } from '../../lib/prisma';
 import { logger } from '../../utils/logger';
+import { config } from '../../config';
 
 export class ChatController {
   // POST /api/chat/session — create chat session (widget / business owner)
