@@ -423,7 +423,7 @@ export default function OnboardingPage() {
       
       // 3) Poll for the bot's reply. Wait until DB has at least 2 new messages
       //    (1 for the user's query, 1 for the AI's reply).
-      const deadline = Date.now() + 60_000 // bumped to 60s to handle long crawls
+      const deadline = Date.now() + 120_000 // bumped to 120s to ensure we outwait the backend's 90s timeout
       let aiText: string | null = null
       while (Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 1200))
@@ -476,9 +476,19 @@ export default function OnboardingPage() {
           
           const audio = new Audio(audioUrl);
           (window as any)._currentAudio = audio;
-          audio.play();
-        } catch (err) {
-          console.error("Failed to play TTS audio:", err);
+          // Handle audio playback gracefully. Browsers block autoplay unless
+          // the user just interacted. Since they just clicked "send" or "mic",
+          // this usually works, but can fail if too much time passed.
+          try {
+            await audio.play()
+          } catch (audioErr: any) {
+            console.error('Failed to play TTS audio', audioErr)
+            // Optional: alert the user if they really need to know
+            // alert('Audio autoplay was blocked by the browser.')
+          }
+        } catch (ttsErr: any) {
+          console.error('TTS fetch failed', ttsErr)
+          alert(ttsErr.message || 'Failed to generate speech. Please try again.')
         }
       }
     } catch (err) {
@@ -909,8 +919,9 @@ function VoiceChat({ onTranscribe, disabled }: { onTranscribe: (text: string, la
         (window as any)._currentAudio.pause();
       }
       
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
+      const recorder = new MediaRecorder(stream, { mimeType })
       mediaRecorderRef.current = recorder
       chunksRef.current = []
 
@@ -919,13 +930,14 @@ function VoiceChat({ onTranscribe, disabled }: { onTranscribe: (text: string, la
       }
 
       recorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        const blob = new Blob(chunksRef.current, { type: mimeType })
         stream.getTracks().forEach(t => t.stop())
         
         setProcessing(true)
         try {
+          const ext = mimeType.includes('webm') ? 'webm' : 'mp4'
           const fd = new FormData()
-          fd.append('file', blob, 'audio.webm')
+          fd.append('file', blob, `audio.${ext}`)
           fd.append('language', language)
 
           const res = await api<{text: string}>('/api/chat/voice-transcribe', {
@@ -933,8 +945,9 @@ function VoiceChat({ onTranscribe, disabled }: { onTranscribe: (text: string, la
             body: fd
           })
           if (res.text) onTranscribe(res.text, language)
-        } catch (err) {
+        } catch (err: any) {
           console.error("Transcription failed", err)
+          alert(err.message || "Failed to transcribe audio. Please try again.")
         } finally {
           setProcessing(false)
         }
