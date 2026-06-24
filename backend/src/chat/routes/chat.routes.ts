@@ -26,6 +26,10 @@ router.post(
   chatController.transcribeVoice,
 );
 router.post(
+  '/tts',
+  chatController.textToSpeech,
+);
+router.post(
   '/session',
   validateRequest(createChatSessionSchema),
   chatController.createSession,

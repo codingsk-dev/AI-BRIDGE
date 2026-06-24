@@ -6,7 +6,9 @@ import json
 import logging
 
 from fastapi import APIRouter, Request, File, Form, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, Response
+from pydantic import BaseModel
+import edge_tts
 
 from app.api.schemas import ChatRequest, ErrorResponse
 from app.modules.chatbot.errors import ChatError
@@ -40,6 +42,25 @@ async def speech_to_text(
         log.exception("speech-to-text failed")
         return JSONResponse(status_code=500, content={"error": {"code": "stt_failed", "message": str(exc)}})
 
+
+class TTSRequest(BaseModel):
+    text: str
+    voice: str = "en-US-JennyNeural"
+
+
+@router.post("/text-to-speech")
+async def text_to_speech_route(body: TTSRequest):
+    """Generate speech using Microsoft Edge TTS (Azure Neural Voices)."""
+    try:
+        communicate = edge_tts.Communicate(body.text, body.voice)
+        audio_data = b""
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_data += chunk["data"]
+        return Response(content=audio_data, media_type="audio/mpeg")
+    except Exception as exc:
+        log.exception("text-to-speech failed")
+        return JSONResponse(status_code=500, content={"error": {"code": "tts_failed", "message": str(exc)}})
 
 def _build_ctx(body: ChatRequest, request: Request) -> ChatContext:
     return ChatContext(

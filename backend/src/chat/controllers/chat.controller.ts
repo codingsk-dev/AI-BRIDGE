@@ -209,6 +209,27 @@ export class ChatController {
       return res.status(500).json({ error: 'Failed to transcribe voice' });
     }
   }
+
+  // POST /api/chat/tts
+  async textToSpeech(req: Request, res: Response, next: NextFunction) {
+    try {
+      const text = req.body.text;
+      if (!text) {
+        return res.status(400).json({ error: 'Text required' });
+      }
+      
+      const aiServiceUrl = 'http://127.0.0.1:8000/v1/text-to-speech';
+      const response = await axios.post(aiServiceUrl, { text }, {
+        responseType: 'stream',
+      });
+
+      res.setHeader('Content-Type', 'audio/mpeg');
+      response.data.pipe(res);
+    } catch (error: any) {
+      logger.error('TTS failed', error.message || error);
+      return res.status(500).json({ error: 'Failed to generate speech' });
+    }
+  }
 }
 
 export const chatController = new ChatController();

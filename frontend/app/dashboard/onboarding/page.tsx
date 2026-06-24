@@ -448,16 +448,31 @@ export default function OnboardingPage() {
 
       if (aiText && chatMode === 'voice') {
         const cleanText = aiText.replace(/\s*\(\d+\)/g, '').replace(/\s*\[\d+\]/g, '').replace(/[*_#]/g, '');
-        const utterance = new SpeechSynthesisUtterance(cleanText);
         
-        // We let the browser use its default voice to prevent silent failures 
-        // on unsupported OS language packs.
-        
-        // Anchor the utterance to prevent Chromium Garbage Collection bug (Issue 509488)
-        (window as any)._lastUtterance = utterance;
-        
-        window.speechSynthesis.resume();
-        window.speechSynthesis.speak(utterance);
+        try {
+          // Use standard fetch because api() wrapper expects JSON
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+          const res = await fetch(`${baseUrl}/api/chat/tts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: cleanText })
+          });
+          
+          if (!res.ok) throw new Error('TTS failed');
+          
+          const blob = await res.blob();
+          const audioUrl = URL.createObjectURL(blob);
+          
+          if ((window as any)._currentAudio) {
+            (window as any)._currentAudio.pause();
+          }
+          
+          const audio = new Audio(audioUrl);
+          (window as any)._currentAudio = audio;
+          audio.play();
+        } catch (err) {
+          console.error("Failed to play TTS audio:", err);
+        }
       }
     } catch (err) {
       setChatLog((l) => {
@@ -882,8 +897,10 @@ function VoiceChat({ onTranscribe, disabled }: { onTranscribe: (text: string, la
     }
 
     try {
-      // Synchronously unlock the Web Speech API during the click event
-      window.speechSynthesis.resume();
+      // INTERRUPT: Stop any currently playing AI audio the instant the user clicks microphone
+      if ((window as any)._currentAudio) {
+        (window as any)._currentAudio.pause();
+      }
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const recorder = new MediaRecorder(stream)
