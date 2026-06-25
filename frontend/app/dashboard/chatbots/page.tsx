@@ -10,6 +10,7 @@ import type { Widget } from '@/lib/types'
 
 export default function ChatbotsPage() {
   const [widgets, setWidgets] = useState<Widget[]>([])
+  const [businesses, setBusinesses] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -18,9 +19,15 @@ export default function ChatbotsPage() {
     let cancelled = false
     ;(async () => {
       try {
-        // The gateway exposes /api/widget which now returns an array of widgets
-        const data = await api<{ widgets: Widget[] }>('/api/widget')
-        if (!cancelled) setWidgets(data.widgets ?? [])
+        // Fetch all widgets and businesses concurrently
+        const [widgetData, businessData] = await Promise.all([
+          api<{ widgets: Widget[] }>('/api/widget'),
+          api<{ businesses: { id: string; name: string }[] }>('/api/business/mine')
+        ])
+        if (!cancelled) {
+          setWidgets(widgetData.widgets ?? [])
+          setBusinesses(businessData.businesses ?? [])
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load widgets')
@@ -102,36 +109,59 @@ export default function ChatbotsPage() {
                   className="max-w-md"
                 />
               </div>
-              {widgets.filter((w) => w.title.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
+              {businesses.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   No chatbots match your search.
                 </div>
               ) : (
-                <ul className="divide-y divide-border">
-                  {widgets
-                    .filter((w) => w.title.toLowerCase().includes(searchQuery.toLowerCase()))
-                    .map((w) => (
-                      <li key={w.id} className="p-5 flex items-center justify-between">
-                        <div>
-                          <Link
-                            href={`/dashboard/chatbots/${w.id}`}
-                            className="font-medium hover:underline"
-                          >
-                            {w.title}
-                          </Link>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Public URL: <span className="font-mono">/{w.slug}</span> · {w.theme} ·{' '}
-                            {w.position} · {w.isEnabled ? 'active' : 'disabled'}
-                          </p>
+                <div className="divide-y divide-border">
+                  {businesses.map((business) => {
+                    const businessWidgets = widgets
+                      .filter((w) => w.businessId === business.id)
+                      .filter((w) => w.title.toLowerCase().includes(searchQuery.toLowerCase()))
+
+                    if (businessWidgets.length === 0 && searchQuery) {
+                      return null; // Hide business block if searching and no match
+                    }
+
+                    return (
+                      <div key={business.id} className="p-0">
+                        <div className="bg-secondary/20 px-5 py-3 border-b border-border">
+                          <h3 className="font-semibold text-sm text-foreground/80">{business.name}</h3>
                         </div>
-                        <Link href={`/dashboard/chatbots/${w.id}`}>
-                          <Button variant="outline" size="sm">
-                            Open
-                          </Button>
-                        </Link>
-                      </li>
-                    ))}
-                </ul>
+                        {businessWidgets.length === 0 ? (
+                          <div className="p-5 text-sm text-muted-foreground text-center">
+                            No widgets created for this business yet.
+                          </div>
+                        ) : (
+                          <ul className="divide-y divide-border">
+                            {businessWidgets.map((w) => (
+                              <li key={w.id} className="p-5 flex items-center justify-between hover:bg-secondary/5 transition-colors">
+                                <div>
+                                  <Link
+                                    href={`/dashboard/chatbots/${w.id}`}
+                                    className="font-medium hover:underline text-primary"
+                                  >
+                                    {w.title}
+                                  </Link>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Public URL: <span className="font-mono">/{w.slug}</span> · {w.theme} ·{' '}
+                                    {w.position} · {w.isEnabled ? 'active' : 'disabled'}
+                                  </p>
+                                </div>
+                                <Link href={`/dashboard/chatbots/${w.id}`}>
+                                  <Button variant="outline" size="sm">
+                                    Manage
+                                  </Button>
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               )}
             </>
           )}
