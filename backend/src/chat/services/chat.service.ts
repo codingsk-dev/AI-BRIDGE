@@ -222,7 +222,7 @@ export class ChatService {
           question: content,
           top_k: 6,
           score_threshold: 0.3,
-          include_live_web: false,
+          include_live_web: true,
           company_name: companyName,
           company_url: companyUrl,
           recent_messages: recentMessages,
