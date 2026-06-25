@@ -17,23 +17,8 @@ export class BusinessController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
       const body = createBusinessSchema.parse(req.body);
-      // Hackathon-friendly: if the user already has a business, UPDATE
-      // it instead of 409'ing. The frontend's create flow is the only
-      // way to set/update the website URL and the AI crawler relies on
-      // that field being correct. Real signup would 409 here.
-      const existing = await businessService.getBusinessByUserId(userId);
-      const business = existing
-        ? await businessService.updateBusiness(existing.id, {
-            name: body.name,
-            description: body.description ?? null,
-            websiteUrl: body.websiteUrl ?? null,
-            industry: body.industry,
-            contactEmail: body.contactEmail ?? null,
-            contactPhone: body.contactPhone ?? null,
-            address: body.address ?? null,
-          })
-        : await businessService.createBusiness({ userId, ...body });
-      return res.status(existing ? 200 : 201).json({ business });
+      const business = await businessService.createBusiness({ userId, ...body });
+      return res.status(201).json({ business });
     } catch (error) {
       return next(error);
     }
