@@ -9,6 +9,7 @@
 import { use, useEffect, useState } from 'react'
 import { ArrowLeft, Upload, FileText, Trash2, Plus, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { api, ApiError } from '@/lib/api'
 import type { Business, DocumentRecord } from '@/lib/types'
@@ -25,6 +26,8 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     let cancelled = false
@@ -77,10 +80,24 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
         setDocuments((prev) => [created.document, ...prev])
       }
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Upload failed')
+      setUploadError('Failed to upload document')
     } finally {
       setIsUploading(false)
       target.value = ''
+    }
+  }
+
+  const handleDeleteBusiness = async () => {
+    if (!confirm('Are you sure you want to delete this business? This action cannot be undone and will delete all associated data, widgets, and reports.')) {
+      return
+    }
+    setIsDeleting(true)
+    try {
+      await api(`/api/business/${businessId}`, { method: 'DELETE' })
+      router.push('/dashboard/businesses')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete business')
+      setIsDeleting(false)
     }
   }
 
@@ -210,6 +227,22 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
                     </Button>
                   </Link>
                 </div>
+              </div>
+
+              <div className="bg-destructive/10 rounded-lg border border-destructive/20 p-6 mt-6">
+                <h3 className="font-semibold text-destructive mb-2">Danger zone</h3>
+                <p className="text-sm text-destructive/80 mb-4">
+                  Permanently delete this business and all of its associated data, chatbots, and reports. This cannot be undone.
+                </p>
+                <Button 
+                  variant="destructive" 
+                  className="w-full"
+                  onClick={handleDeleteBusiness}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                  Delete business
+                </Button>
               </div>
             </div>
           </div>
