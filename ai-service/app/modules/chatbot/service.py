@@ -90,15 +90,28 @@ def _requires_live_web(question: str, groq_client: GroqLike | None) -> bool:
     """Fast check to see if the query actually needs web research."""
     if not groq_client:
         return False
-    if len(question.strip()) < 5:
+        
+    q = question.strip().lower()
+    
+    # 1. Ultra-fast length heuristic
+    if len(q) < 15:
         return False
+        
+    # 2. Conversational shortcut heuristics
+    small_talk = {"hi", "hello", "hey", "who are you", "what are you", "what can you do", "help", "thanks", "thank you", "bye", "goodbye"}
+    if any(q.startswith(x) for x in small_talk) and len(q) < 40:
+        return False
+
+    # 3. LLM Classification (Groq)
     prompt = (
-        "Does this user query require searching the live internet for external "
-        "competitors, reviews, news, recent events, or tech stacks? Answer ONLY 'YES' or 'NO'.\n"
+        "Classify if the following user query REQUIRES searching the live internet "
+        "(e.g. for competitors, news, real-time reviews, external tech stacks, or fresh events). "
+        "Do NOT search the web for general advice, generic questions, or greetings. "
+        "Answer ONLY 'YES' or 'NO'.\n\n"
         f"Query: {question}"
     )
     try:
-        ans = groq_client.complete_chat("You are a classification bot.", prompt)
+        ans = groq_client.complete_chat("You are a strict YES/NO classifier.", prompt)
         return "YES" in ans.strip().upper()
     except Exception:
         return False
