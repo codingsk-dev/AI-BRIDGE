@@ -45,6 +45,11 @@ export interface AiReportResponse {
   company_summary?: string;
   business_summary?: string;
   ai_opportunities?: string[];
+  roi_estimates?: Array<{
+    suggestion_title: string;
+    estimated_annual_savings_usd: number;
+    confidence: string;
+  }>;
 }
 
 export type UpdateAuditInput = Partial<Omit<CreateAuditInput, 'businessId'>>;
@@ -228,6 +233,7 @@ export class AuditService {
       strengths,
       weaknesses,
       suggestedSolutions: opportunities,
+      expectedRoi: data.roi_estimates ? { estimates: data.roi_estimates } : undefined,
     });
   }
 }
