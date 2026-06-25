@@ -321,17 +321,20 @@ class ChatService:
             h.get("source_type") == "live_web" for h in context_hits
         )
         if has_own_data:
-            system_prompt = build_advisor_system_prompt(
-                company_name=self.ctx.company_name,
-                company_url=self.ctx.company_url,
-                chat_mode=self.ctx.chat_mode,
-                widget_name=self.ctx.widget_name,
-                widget_description=self.ctx.widget_description,
-            )
+            base_prompt = ADVISOR_SYSTEM_PROMPT
         elif has_live_hits:
-            system_prompt = LIVE_WEB_ONLY_SYSTEM_PROMPT
+            base_prompt = LIVE_WEB_ONLY_SYSTEM_PROMPT
         else:
-            system_prompt = GENERAL_SYSTEM_PROMPT
+            base_prompt = GENERAL_SYSTEM_PROMPT
+
+        system_prompt = build_advisor_system_prompt(
+            base_prompt=base_prompt,
+            company_name=self.ctx.company_name,
+            company_url=self.ctx.company_url,
+            chat_mode=self.ctx.chat_mode,
+            widget_name=self.ctx.widget_name,
+            widget_description=self.ctx.widget_description,
+        )
 
         user_prompt = build_user_prompt(self.ctx.question, context_hits)
         # Prepend the last few messages from this same session so the

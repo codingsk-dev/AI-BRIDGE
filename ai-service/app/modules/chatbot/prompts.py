@@ -160,6 +160,7 @@ def small_talk_reply(question: str, company_name: str | None = None) -> str:
 
 
 def build_advisor_system_prompt(
+    base_prompt: str,
     company_name: str | None = None,
     company_url: str | None = None,
     chat_mode: str = "text",
@@ -168,18 +169,16 @@ def build_advisor_system_prompt(
 ) -> str:
     """Identity-anchored system prompt.
 
-    The base ADVISOR_SYSTEM_PROMPT is a module-level constant (the LLM
-    doesn't see the business name there). We append a small block that
-    pins the advisor to the specific business + URL the user created,
-    so its answers never drift to a generic "your business X" framing.
-    If a widget persona is provided, we append it as well.
+    Takes a base prompt (e.g. ADVISOR_SYSTEM_PROMPT or GENERAL_SYSTEM_PROMPT)
+    and appends a small block that pins the advisor to the specific business
+    and widget persona.
     """
     safe_name = (company_name or "").strip()
     safe_url = (company_url or "").strip()
     safe_widget_name = (widget_name or "").strip()
     safe_widget_desc = (widget_description or "").strip()
     
-    lines = []
+    lines = [base_prompt.strip()]
     if safe_name or safe_url:
         lines.extend(["", "", "IDENTITY FOR THIS CONVERSATION:"])
         if safe_name:
