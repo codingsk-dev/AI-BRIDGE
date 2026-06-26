@@ -178,8 +178,8 @@ async def collect_evidence(url: str) -> AuditEvidence:
     evidence.extraction_confidence = min(100, confidence)
     
     if evidence.extraction_confidence < 40:
-        raise ExtractionFailure(
-            f"Extraction confidence too low ({evidence.extraction_confidence}%). "
+        log.warning(
+            f"Extraction confidence low ({evidence.extraction_confidence}%). "
             f"Content length: {content_len}, Schemas found: {len(evidence.schema_payloads)}"
         )
         
