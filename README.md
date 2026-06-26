@@ -4,6 +4,10 @@ AIBridge is an end-to-end conversational AI infrastructure designed to seamlessl
 
 Here is the website live link [AI-BRIDGE](https://aibridge-lilac.vercel.app/)
 
+## Demo Video
+
+<video src="demo.mp4" controls width="100%"></video>
+
 ![AIBridge Dashboard](assets/img1.png)
 
 ## About
