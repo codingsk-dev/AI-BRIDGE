@@ -276,7 +276,7 @@ class ChatService:
             self.ctx.include_live_web
             and settings.live_web_enabled
             and self.ctx.embedding_model is not None
-            and _requires_live_web(self.ctx.question, self.ctx.groq)
+            and (total == 0 or _requires_live_web(self.ctx.question, self.ctx.groq))
         ):
             try:
                 # ChatService runs in a worker thread (via run_in_executor),

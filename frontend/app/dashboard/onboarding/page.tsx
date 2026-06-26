@@ -883,72 +883,77 @@ function TextChat({
 function VoiceChat({ onTranscribe, disabled }: { onTranscribe: (text: string, lang: string) => void; disabled: boolean }) {
   const [language, setLanguage] = useState<'en-IN' | 'te-IN' | 'hi-IN'>('en-IN')
   const [recording, setRecording] = useState(false)
-  const recognitionRef = useRef<any>(null)
+  const [isTranscribing, setIsTranscribing] = useState(false)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
 
-  useEffect(() => {
-    // Initialize Web Speech API
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          // Use a generic 'en' mapping for the LLM to know the language mode
-          const baseLang = language.split('-')[0];
-          onTranscribe(transcript, baseLang);
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
-        if (event.error !== 'no-speech') {
-          alert(`Microphone error: ${event.error}. Make sure microphone permissions are granted.`);
-        }
-        setRecording(false);
-      };
-
-      recognition.onend = () => {
-        setRecording(false);
-      };
-
-      recognitionRef.current = recognition;
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
     }
-  }, [onTranscribe, language]);
+  }
 
-  // Update language when it changes
-  useEffect(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.lang = language;
-    }
-  }, [language]);
-
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (recording) {
-      recognitionRef.current?.stop();
-      setRecording(false);
-      return;
-    }
-
-    if (!recognitionRef.current) {
-      alert("Your browser does not support native speech recognition. Please use Google Chrome, Edge, or Safari.");
-      return;
+      stopRecording()
+      return
     }
 
     try {
       // Stop any currently playing AI audio
       if ((window as any)._currentAudio) {
-        (window as any)._currentAudio.pause();
+        (window as any)._currentAudio.pause()
       }
-      
-      recognitionRef.current.start();
-      setRecording(true);
-    } catch (err) {
-      console.error('Could not start recognition', err);
-      // Fallback if it's already started
-      setRecording(false);
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      chunksRef.current = []
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data)
+        }
+      }
+
+      mediaRecorder.onstop = async () => {
+        setRecording(false)
+        setIsTranscribing(true)
+        
+        // release microphone
+        stream.getTracks().forEach(track => track.stop())
+
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        const formData = new FormData()
+        formData.append('file', blob, 'audio.webm')
+        
+        const baseLang = language.split('-')[0]
+        formData.append('language', baseLang)
+
+        try {
+          const res = await api<{ text: string }>('api/chat/voice-transcribe', {
+            method: 'POST',
+            body: formData,
+          })
+          if (res && res.text) {
+            onTranscribe(res.text, baseLang)
+          } else {
+            alert('Could not transcribe audio. Please speak louder or try again.')
+          }
+        } catch (err: any) {
+          console.error('Transcription failed', err)
+          alert('Network or transcription error. Please try again.')
+        } finally {
+          setIsTranscribing(false)
+        }
+      }
+
+      mediaRecorder.start(1000) // Collect chunks every second just in case
+      setRecording(true)
+    } catch (err: any) {
+      console.error('Microphone error', err)
+      alert('Microphone access denied or unavailable. Please check your browser permissions.')
+      setRecording(false)
     }
   }
 
@@ -965,7 +970,7 @@ function VoiceChat({ onTranscribe, disabled }: { onTranscribe: (text: string, la
               key={lang.code}
               type="button"
               onClick={() => setLanguage(lang.code as any)}
-              disabled={recording || disabled}
+              disabled={recording || disabled || isTranscribing}
               className={`px-3 h-8 rounded-md text-xs font-medium disabled:opacity-50 ${
                 language === lang.code
                   ? 'bg-indigo-600 text-white'
@@ -982,7 +987,7 @@ function VoiceChat({ onTranscribe, disabled }: { onTranscribe: (text: string, la
         <button
           type="button"
           onClick={toggleRecording}
-          disabled={disabled}
+          disabled={disabled || isTranscribing}
           className={`w-24 h-24 rounded-full grid place-items-center text-white shadow-xl transition-all ${
             recording 
               ? 'bg-rose-500 animate-pulse scale-110 shadow-rose-200' 
@@ -990,12 +995,20 @@ function VoiceChat({ onTranscribe, disabled }: { onTranscribe: (text: string, la
           }`}
           aria-label="Tap to talk"
         >
-          <Mic className={`w-10 h-10 ${recording ? 'animate-bounce' : ''}`} />
+          {isTranscribing ? (
+            <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            <Mic className={`w-10 h-10 ${recording ? 'animate-bounce' : ''}`} />
+          )}
         </button>
       </div>
       
       <p className="text-center text-sm text-slate-600 mt-4 h-6">
-        {recording ? 'Recording... tap again to send' : `Tap to talk in ${language === 'en-IN' ? 'English' : language === 'te-IN' ? 'Telugu' : 'Hindi'}`}
+        {isTranscribing 
+          ? 'Transcribing...' 
+          : recording 
+            ? 'Recording... tap again to send' 
+            : `Tap to talk in ${language === 'en-IN' ? 'English' : language === 'te-IN' ? 'Telugu' : 'Hindi'}`}
       </p>
     </div>
   )
